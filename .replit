@@ -1,0 +1,56 @@
+modules = ["python-3.11"]
+
+[nix]
+channel = "stable-24_05"
+
+[workflows]
+runButton = "Project"
+
+[[workflows.workflow]]
+name = "Project"
+mode = "parallel"
+author = "agent"
+
+[[workflows.workflow.tasks]]
+task = "workflow.run"
+args = "CSV Uploader"
+
+[[workflows.workflow.tasks]]
+task = "workflow.run"
+args = "Test Server"
+
+[[workflows.workflow]]
+name = "CSV Uploader"
+author = "agent"
+
+[workflows.workflow.metadata]
+agentRequireRestartOnSave = false
+
+[[workflows.workflow.tasks]]
+task = "packager.installForAll"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "mkdir -p test_output && python csv_uploader.py test.csv test_output"
+
+[[workflows.workflow]]
+name = "Test Server"
+author = "agent"
+
+[workflows.workflow.metadata]
+agentRequireRestartOnSave = false
+
+[[workflows.workflow.tasks]]
+task = "packager.installForAll"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "python test_server.py"
+waitForPort = 5000
+
+[deployment]
+run = ["sh", "-c", "mkdir -p test_output && python csv_uploader.py test.csv test_output"]
+
+[[ports]]
+localPort = 5000
+externalPort = 80
