@@ -77,40 +77,48 @@ class CSVUploader:
         """
         try:
             # Find download link in response
-            # Note: Actual link extraction would depend on server response format
-            # This is a generic implementation
             download_link = None
-            
+
             # Look for href links in response
             from bs4 import BeautifulSoup
             soup = BeautifulSoup(response.text, 'html.parser')
             for link in soup.find_all('a'):
                 href = link.get('href')
-                if href and (href.endswith('.csv') or href.endswith('.xlsx')):
-                    download_link = urljoin(UPLOAD_ENDPOINT, href)
-                    break
-            
+                if href:
+                    ext = Path(href).suffix.lower()
+                    if ext in ALLOWED_DOWNLOAD_EXTENSIONS:
+                        download_link = urljoin(UPLOAD_ENDPOINT, href)
+                        break
+
             if not download_link:
                 logger.error("No download link found in response")
                 raise ValueError("No download link found in response")
-            
+
             # Download the file
             logger.info(f"Downloading result from: {download_link}")
             download_response = self.session.get(download_link, timeout=TIMEOUT)
             download_response.raise_for_status()
-            
+
             # Get filename from Content-Disposition header or URL
-            filename = download_response.headers.get('content-disposition')
-            if not filename:
+            content_disposition = download_response.headers.get('content-disposition')
+            if content_disposition and 'filename=' in content_disposition:
+                # Extract filename from content-disposition
+                import re
+                filename_match = re.search(r'filename=(.+)', content_disposition)
+                if filename_match:
+                    filename = filename_match.group(1).strip('"').strip()
+                else:
+                    filename = os.path.basename(download_link)
+            else:
                 filename = os.path.basename(download_link)
-            
+
             output_path = os.path.join(output_dir, filename)
             with open(output_path, 'wb') as f:
                 f.write(download_response.content)
-                
+
             logger.info(f"Result saved to: {output_path}")
             return output_path
-            
+
         except (requests.exceptions.RequestException, ValueError) as e:
             logger.error(f"Download failed: {str(e)}")
             raise
