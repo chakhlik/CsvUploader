@@ -42,8 +42,9 @@ def upload_file():
         df = pd.read_csv(input_path, sep=';')
         df['ProcessedAt'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
 
-        # Save processed file
-        output_filename = f'processed_{filename}'
+        # Save processed file with original name
+        base_name = os.path.splitext(filename)[0]
+        output_filename = f'processed_{base_name}.csv'
         output_path = os.path.join(UPLOAD_FOLDER, output_filename)
         df.to_csv(output_path, sep=';', index=False)
 
@@ -63,7 +64,7 @@ def download_file(filename):
     return send_file(
         os.path.join(UPLOAD_FOLDER, filename),
         as_attachment=True,
-        download_name=filename
+        download_name=filename.replace('processed_', '')  # Remove 'processed_' prefix for download
     )
 
 if __name__ == '__main__':

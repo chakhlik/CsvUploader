@@ -52,6 +52,7 @@ except ImportError:
 class CSVUploader:
     def __init__(self):
         self.session = requests.Session()
+        self.original_filename = None  # Store original filename
 
     def validate_file(self, file_path: str) -> bool:
         """
@@ -78,6 +79,9 @@ class CSVUploader:
         Upload the CSV file to the server
         """
         try:
+            # Store original filename without extension
+            self.original_filename = os.path.splitext(os.path.basename(file_path))[0]
+
             with open(file_path, 'rb') as f:
                 files = {
                     'fileToUpload': (os.path.basename(file_path), f, 'text/csv')
@@ -105,7 +109,6 @@ class CSVUploader:
         Extract download link from response and download the file
         """
         try:
-            # Find download link in response
             download_link = None
 
             # Look for href links in response
@@ -127,21 +130,19 @@ class CSVUploader:
             download_response = self.session.get(download_link, timeout=TIMEOUT)
             download_response.raise_for_status()
 
-            # Get filename from Content-Disposition header or URL
-            content_disposition = download_response.headers.get('content-disposition')
-            if content_disposition and 'filename=' in content_disposition:
-                # Extract filename from content-disposition
-                filename_match = re.search(r'filename=(.+)', content_disposition)
-                if filename_match:
-                    filename = filename_match.group(1).strip('"').strip()
+            # Get the extension from Content-Type or download link
+            ext = os.path.splitext(download_link)[1]
+            if not ext:
+                content_type = download_response.headers.get('content-type', '')
+                if 'zip' in content_type:
+                    ext = '.zip'
+                elif 'rar' in content_type:
+                    ext = '.rar'
                 else:
-                    filename = os.path.basename(download_link)
-            else:
-                filename = os.path.basename(download_link)
+                    ext = '.csv'  # default to csv if unknown
 
-            # Ensure we have a valid filename
-            if not filename:
-                filename = f"processed_{int(time.time())}.csv"
+            # Use original filename with new extension
+            filename = f"{self.original_filename}{ext}" if self.original_filename else f"processed_{int(time.time())}{ext}"
 
             # Create output directory if it doesn't exist
             os.makedirs(output_dir, exist_ok=True)
