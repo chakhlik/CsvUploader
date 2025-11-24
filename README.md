@@ -1,2 +1,2 @@
 # CSV Uploader
-Oversampling of CD tracks with stict interpolation mecanism
+A simple tool which uploads a CSV list of files to server and gets back an archive with selected files
